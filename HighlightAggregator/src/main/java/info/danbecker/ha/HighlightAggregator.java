@@ -48,7 +48,8 @@ import static java.lang.String.format;
  *          - number means distance (from start or end of previous item)
  *          - large number or special marker means no end with this chapter/page/location change
  *       - specify aggregation locations (page 14, locations 143-176) or (chapter 1, pages 1-22, locations 1-240)
- *       - aggregation emit - manage notes container such as StringBuffer or <ul> or table
+ *       - aggregation emit - container options, lists/bullets, paragraphs, tables/rows, Moustacne templates, others
+ *
  *  Output results to HTML, PDF, text
  *
  * @author <a href="mailto://dan@danbecker.info>Dan Becker</a>
@@ -62,6 +63,7 @@ public class HighlightAggregator {
     // Minor Consider getting chapter numbers from sectionHeading as in "Anglo-Saxons" book
     // Minor Update ProximityType for relative to beginning or to last or don't care
     // Major Aggregation container options, lists/bullets, paragraphs, tables/rows, others
+    // Major Use Moustache templates to output section/chapter/page/location texts.
     // Major insert named images into Notebook location - "Fig01-0725AD-MapOfBritain-C05-P278.png"
     // Minor line + N deletes (delete this line and the next N)
     // Major Move hard coded line edits, deletes, swaps to configuration file.
