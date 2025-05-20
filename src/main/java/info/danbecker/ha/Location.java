@@ -37,6 +37,7 @@ public record Location(NoteType type, String chapterStr, int chapter, String pag
 
     public static Location fromStr( NoteType noteType, String chapterStr, String pageStr, int loc ) {
         int chapter = chapterStr.isEmpty() ? 0 : fromIntOrRoman( chapterStr ); // -1 will be no digits
+        chapter = -1 == chapter ? 0 : chapter; // Location does not like negatives
         return new Location( noteType,
                 chapterStr, chapter, pageStr, fromIntOrRoman( pageStr ), loc );
     }
@@ -59,7 +60,8 @@ public record Location(NoteType type, String chapterStr, int chapter, String pag
         return cVal;
     }
 
-    public static String INT_RE = "[^-\\d]*(-?\\d+)\\D*";
+    // public static String INT_RE = "[^-\\d]*(-?\\d+)\\D*";
+    public static String INT_RE = "\\D*(-?\\d+)\\D*";
     public final static Pattern intPattern = Pattern.compile( INT_RE );
     public static int intGroup( String str ) throws NumberFormatException {
         int val = -1;
@@ -146,6 +148,7 @@ public record Location(NoteType type, String chapterStr, int chapter, String pag
      * Parse Kindle Notes and Highlights into data
      * "Note - I > Page 11 · Location 116"
      * "Highlight (<span class="highlight_yellow">yellow</span>) - I &gt; Page 13 · Location 144"
+     * Beware chapter string with dashes - "Highlight (yellow) - The Days of Empire, 1870–1918 > Page 2 · Location 238"
      *
      * @param s input string as defined in comments above
      * @return a new Location from the Kindle noteHeading text
