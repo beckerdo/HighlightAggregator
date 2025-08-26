@@ -123,6 +123,7 @@ public class HighlightAggregator {
             // Aggregate noteHeading texts by proximity.
             action = "aggregateNoteText";
             String cssSelector = "h3.noteHeading";
+            // String cssSelector = "[class*=Heading]";  // any class containing Heading
             String outputPathStr = opt.outFile;
             if (null == opt.outFile || opt.outFile.isEmpty() ) {
                 // Create and output name if not provided.
@@ -195,6 +196,7 @@ public class HighlightAggregator {
                                 file.getName().endsWith(opt.nameEndsWith) &&
                                 // skip over outputs we generated here.
                                 !file.getName().contains(opt.outputMarker)) {
+                            LOGGER.info( format( "File \"%s\" is readable.%n", file.getPath() ));
                             inputFiles.add(file.getPath());
                         }
                     }
@@ -202,8 +204,8 @@ public class HighlightAggregator {
             }
         }
         // otherwise - message
-        LOGGER.info( format( "Input path \"%s\", file \"%s\", contains \"%s\", endsWith \"%s\" found %d items.%n",
-                opt.inPath, opt.inFile, opt.nameContains, opt.nameEndsWith, inputFiles.size()));
+        // LOGGER.info( format( "Input path \"%s\", file \"%s\", contains \"%s\", endsWith \"%s\" found %d items.%n",
+        //        opt.inPath, opt.inFile, opt.nameContains, opt.nameEndsWith, inputFiles.size()));
         LOGGER.info( format( "Proximities chap %d, page %d, loc %d%n",
                 opt.chapProx, opt.pageProx, opt.locProx ));
 
@@ -373,12 +375,12 @@ public class HighlightAggregator {
         Elements elements = doc.select(cssSelector);
 
         // For each element found
-        for (Element elNoteHeading : elements) {
+        for (Element element : elements) {
             // Get noteHeading location and noteText text.
-            String headingText = elNoteHeading.text();
+            String headingText = element.text();
             currLoc = Location.fromKindle(headingText);
 
-            elCurrNoteText = elNoteHeading.nextElementSibling();
+            elCurrNoteText = element.nextElementSibling();
             String attrNoteTextClass = elCurrNoteText.attr("class"); // Get attr by name
             if (!"noteText".equals(elCurrNoteText.attr("class"))) {
                 System.out.format("Warning, at loc %s expected \"noteText\" class, found %s%n", currLoc, attrNoteTextClass);
@@ -420,7 +422,7 @@ public class HighlightAggregator {
                     if ( !chapStr.startsWith("Chapter") )
                         chapStr = "Chapter " + chapStr;
                     System.out.println( chapStr );
-                    elNoteHeading.before(format("<h3 class='chapterHeading'>%s</h3>", chapStr ));
+                    element.before(format("<h3 class='chapterHeading'>%s</h3>", chapStr ));
                 }
             } else {
                 // Append to current aggregation
@@ -433,7 +435,7 @@ public class HighlightAggregator {
                     elCurrNoteText.remove();
             }
             // Done with noteHeading node, remove
-            elNoteHeading.remove();
+            element.remove();
 
             // Ready for next element.
             elCount++;

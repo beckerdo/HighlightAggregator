@@ -38,8 +38,9 @@ public record Location(NoteType type, String chapterStr, int chapter, String pag
     public static Location fromStr( NoteType noteType, String chapterStr, String pageStr, int loc ) {
         int chapter = chapterStr.isEmpty() ? 0 : fromIntOrRoman( chapterStr ); // -1 will be no digits
         chapter = -1 == chapter ? 0 : chapter; // Location does not like negatives
-        return new Location( noteType,
-                chapterStr, chapter, pageStr, fromIntOrRoman( pageStr ), loc );
+        int pageInt =  fromIntOrRoman( pageStr );
+        pageInt = -1 == pageInt ? 0 : pageInt; // Location does not like negatives
+        return new Location( noteType, chapterStr, chapter, pageStr, pageInt, loc );
     }
 
     public static Location fromInt( NoteType noteType, int chapter, int page, int loc ) {
