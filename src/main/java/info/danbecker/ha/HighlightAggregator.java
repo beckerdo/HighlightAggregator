@@ -362,7 +362,7 @@ public class HighlightAggregator {
         // Init variables for aggregation
         int elCount = 0;
         int aggrStartIndex = 0;
-        StringBuilder aggrSB = null;
+        StringBuilder aggrSB = new StringBuilder();
         Element elAggrStart = null; // noteText element for aggrSB
         Location aggrStartLoc = null;
 
@@ -381,58 +381,66 @@ public class HighlightAggregator {
             currLoc = Location.fromKindle(headingText);
 
             elCurrNoteText = element.nextElementSibling();
-            String attrNoteTextClass = elCurrNoteText.attr("class"); // Get attr by name
-            if (!"noteText".equals(elCurrNoteText.attr("class"))) {
-                System.out.format("Warning, at loc %s expected \"noteText\" class, found %s%n", currLoc, attrNoteTextClass);
-            }
-            // Fix up noteText text
-            String noteText = editKindleText(elCurrNoteText.text());
-            if (Note == currLoc.type())
-                noteText = "(Note: " + noteText + ")";
+            // If next DOM sibling is class "noteText", process it, else ignore.
+            if ( null != elCurrNoteText ) {
+                String attrNoteTextClass = elCurrNoteText.attr("class"); // Get attr by name
+                if ("noteText".equals(elCurrNoteText.attr("class"))) {
+                    // Fix up noteText text
+                    String noteText = editKindleText(elCurrNoteText.text());
+                    if (Note == currLoc.type())
+                        noteText = "(Note: " + noteText + ")";
 
-            if ( null == prevLoc ) {
-                // We have some info. First loop initialization.
-                // Trigger a chapter change to get a chapter change.
-                int smallChap = currLoc.chapter() > 0 ? currLoc.chapter() - 1 : 0;
-                prevLoc = Location.fromInt(currLoc.type(), smallChap, currLoc.page(), currLoc.location());
-                aggrSB = new StringBuilder();
-                aggrStartLoc = currLoc;
-                elAggrStart = elCurrNoteText;
-            }
+                    if (null == prevLoc) {
+                        // We have some info. First loop initialization.
+                        // Trigger a chapter change to get a chapter change.
+                        int smallChap = currLoc.chapter() > 0 ? currLoc.chapter() - 1 : 0;
+                        prevLoc = Location.fromInt(currLoc.type(), smallChap, currLoc.page(), currLoc.location());
+                        aggrSB = new StringBuilder();
+                        aggrStartLoc = currLoc;
+                        elAggrStart = elCurrNoteText;
+                    }
 
-            // Determine chapter, page, and location triggers.
-            boolean chapChange = prevLoc.chapter() + chapProx < currLoc.chapter();
-            boolean pageChange = prevLoc.page() + pageProx < currLoc.page();
-            boolean locChange = prevLoc.location() + locProx < currLoc.location();
+                    // Determine chapter, page, and location triggers.
+                    boolean chapChange = prevLoc.chapter() + chapProx < currLoc.chapter();
+                    boolean pageChange = prevLoc.page() + pageProx < currLoc.page();
+                    boolean locChange = prevLoc.location() + locProx < currLoc.location();
 
-            // Flush aggregation if needed.
-            if (chapChange || pageChange || locChange) {
-                // Save aggregation text to first noteTextElement. Append location ranges.
-                flushAggregation( elAggrStart, aggrSB, aggrStartLoc, aggrStartIndex, prevLoc, elCount-1);
+                    // Flush aggregation if needed.
+                    if (chapChange || pageChange || locChange) {
+                        // Save aggregation text to first noteTextElement. Append location ranges.
+                        if (null != elAggrStart)
+                            flushAggregation(elAggrStart, aggrSB, aggrStartLoc, aggrStartIndex, prevLoc, elCount - 1);
 
-                // Start a new aggregation
-                aggrSB = new StringBuilder(noteText);
-                elAggrStart = elCurrNoteText;
-                aggrStartLoc = currLoc;
-                aggrStartIndex = elCount;
+                        // Start a new aggregation
+                        aggrSB = new StringBuilder(noteText);
+                        elAggrStart = elCurrNoteText;
+                        aggrStartLoc = currLoc;
+                        aggrStartIndex = elCount;
 
-                // Some books do not have chapters.
-                if ( chapChange && !currLoc.chapterStr().isEmpty() ) {
-                    String chapStr = currLoc.chapterStr();
-                    if ( !chapStr.startsWith("Chapter") )
-                        chapStr = "Chapter " + chapStr;
-                    System.out.println( chapStr );
-                    element.before(format("<h3 class='chapterHeading'>%s</h3>", chapStr ));
+                        // Some books do not have chapters.
+                        if (chapChange && !currLoc.chapterStr().isEmpty()) {
+                            String chapStr = currLoc.chapterStr();
+                            if (!chapStr.startsWith("Chapter"))
+                                chapStr = "Chapter " + chapStr;
+                            System.out.println(chapStr);
+                            element.before(format("<h3 class='chapterHeading'>%s</h3>", chapStr));
+                        }
+                    } else {
+                        // Append to current aggregation
+                        if (!aggrSB.isEmpty())
+                            aggrSB.append(" "); // delimiter
+                        aggrSB.append(noteText);
+                        // Remove div.noteText if not the aggr start.
+                        // Warning. Sometimes multiple highlights on same line have the same location.
+                        // if (!elAggrStart.equals(elCurrNoteText))
+                        if (!elCurrNoteText.equals(elAggrStart))
+                            elCurrNoteText.remove();
+                    }
+                } else {
+                    System.out.format("Warning, expected \"noteText\" class  at loc %s, found class %s%n", currLoc, attrNoteTextClass);
                 }
             } else {
-                // Append to current aggregation
-                if ( !aggrSB.isEmpty() )
-                    aggrSB.append(" "); // delimiter
-                aggrSB.append(noteText);
-                // Remove div.noteText if not the aggr start.
-                // Warning. Sometimes multiple highlights on same line have the same location.
-                if ( !elAggrStart.equals( elCurrNoteText ) )
-                    elCurrNoteText.remove();
+                System.out.format("Warning, heading \"%s\" at loc %s has no following note text (null next element).%n", headingText, currLoc);
             }
             // Done with noteHeading node, remove
             element.remove();
