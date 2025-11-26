@@ -83,6 +83,10 @@
             <!-- Plugin to create a self-contained portable package.
                  This allows us to execute our application like this:
                  java -cp target/app-name-1.0-jar-with-dependencies.jar info.danbecker.project.App
+
+                 Create a Java JAR with all dependencies using maven-assembly-plugin and assembly:single target.
+                 mvn assembly:single
+                 (IntelliJ mvn has troubles. Run from command line.)
                -->
             <plugin>
                 <artifactId>maven-assembly-plugin</artifactId>

@@ -8,15 +8,41 @@ import org.junit.jupiter.api.Test;
 public class LocationTest {
     @Test
     public void testBasic() {
-        // Some books do not have chapters.
+        // Some books do not have chapters or locations.
         assertThrows( IllegalArgumentException.class,
-            () -> Location.fromStr( Highlight, "I", "-1", 2 ));
+            () -> Location.fromStr( Highlight, "I", "-1", "2" ));
         assertThrows( IllegalArgumentException.class,
-            () -> Location.fromStr( Highlight, "I", "-1", 2 ));
-        assertThrows( IllegalArgumentException.class,
-            () -> Location.fromStr(  Note, "I", "1", -2));
+            () -> Location.fromStr( Highlight, "I", "1", "-2" ));
 
-        Location test = Location.fromStr( Highlight, "I", "1", 2);
+        // Test all strings empty
+        Location test = Location.fromStr( Highlight, "", "", "");
+        assertEquals( Highlight, test.type() );
+        assertEquals( "", test.chapterStr() );
+        assertEquals( 0, test.chapter() );
+        assertEquals( "", test.pageStr() );
+        assertEquals( 0, test.page() );
+        assertEquals( "", test.locStr() );
+        assertEquals( 0, test.location() );
+
+        // Test only one parameter.
+        test = Location.fromStr( Highlight, "", "7", "");
+        assertEquals( Highlight, test.type() );
+        assertEquals( "", test.chapterStr() );
+        assertEquals( 0, test.chapter() );
+        assertEquals( "7", test.pageStr() );
+        assertEquals( 7, test.page() );
+        assertEquals( "", test.locStr() );
+        assertEquals( 0, test.location() );
+        test = Location.fromStr( Highlight, "", "", "7");
+        assertEquals( Highlight, test.type() );
+        assertEquals( "", test.chapterStr() );
+        assertEquals( 0, test.chapter() );
+        assertEquals( "", test.pageStr() );
+        assertEquals( 0, test.page() );
+        assertEquals( "7", test.locStr() );
+        assertEquals( 7, test.location() );
+        // Test combos
+        test = Location.fromStr( Highlight, "I", "1", "2");
         assertEquals( Highlight, test.type() );
         assertEquals( "I", test.chapterStr() );
         assertEquals( 1, test.page() );
@@ -27,26 +53,25 @@ public class LocationTest {
         assertEquals( "p1", test.toString( "p" ));
         assertEquals( "l2,p1", test.toString( "lp" ));
 
-        assertEquals( "cI-II,p1-3,l2-40", Location.range(test, Location.fromStr( Highlight, "II", "3", 40) ));
-        assertEquals( "cI-II,p1-3,l2-40", Location.range(test, Location.fromStr( Highlight, "II", "3", 40) ));
+        assertEquals( "cI-II,p1-3,l2-40", Location.range(test, Location.fromStr( Highlight, "II", "3", "40") ));
+        assertEquals( "cI-II,p1-3,l2-40", Location.range(test, Location.fromStr( Highlight, "II", "3", "40") ));
 
         // Test strings without chapters.
-        assertEquals( "p1,l2", Location.fromStr( Highlight, "", "1", 2).toString());
-        assertEquals( "p1-3,l2-40", Location.range(test, Location.fromStr( Highlight, "", "3", 40) ));
+        assertEquals( "p1,l2", Location.fromStr( Highlight, "", "1", "2").toString());
+        assertEquals( "p1-3,l2-40", Location.range(test, Location.fromStr( Highlight, "", "3", "40") ));
+
     }
     @Test
-    public void testParseInt() {
-        assertTrue( Location.intMatch( "123"));
-        assertTrue( Location.intMatch( "-123"));
-        assertFalse( Location.intMatch( "abc"));
-        assertTrue( Location.intMatch( "ab 123"));
-        assertTrue( Location.intMatch( " 123 ab "));
-        assertTrue( Location.intMatch( " Chapter 12 ") );
+    public void testIntMix() {
+        // mixed ints and Strings
+        assertEquals( 2, Location.parseIntGroup( "  2   " ));
+        assertEquals( -3, Location.parseIntGroup( "  -3   " ));
+        assertEquals( 4, Location.parseIntGroup( "  4. Arabs" ));
+        assertEquals( 12, Location.parseIntGroup( "  Chapter 12 " ));
 
-        // assertEquals( 123, Location.intGroup( "123"));
-        assertEquals( -123, Location.intGroup( "-123"));
-        assertEquals( -1, Location.intGroup( "abc"));
-        assertEquals( 123, Location.intGroup( " ab 123 "));
+        NumberFormatException ex =  assertThrows( NumberFormatException.class,
+                () -> Location.parseIntGroup( "Fred" ));
+        assertTrue( ex.getMessage().contains( "No integer found"));
     }
 
     @Test
@@ -84,7 +109,7 @@ public class LocationTest {
     @Test
     public void testParseKindle() {
         // Test the parse of Kindle location from different books
-        assertEquals( Location.fromStr( Note, "I", "11", 116 ),
+        assertEquals( Location.fromStr( Note, "I", "11", "116" ),
                 Location.fromKindle( "Note - I > Page 11 · Location 116" )); // Tolstoy - Hadji Murad
         assertEquals( Location.fromInt( Note, 23, 13, 144 ),
                 Location.fromKindle( "Note - 23 > Page xiii · Location 144" )); // Jones "Power and Thrones"
@@ -92,10 +117,14 @@ public class LocationTest {
                 Location.fromKindle( "Highlight - XIX > Page xiii · Location 144" )); // Jones "Power and Thrones"
         assertEquals( Location.fromInt( Highlight, 0, 13, 144 ),
                 Location.fromKindle( "Highlight - Page xiii · Location 144" )); // Jones "Power and Thrones"
-        assertEquals( Location.fromStr( Highlight, "1. Romans", "3", 210 ),
+        assertEquals( Location.fromStr( Highlight, "1. Romans", "3", "210" ),
                 Location.fromKindle( "Highlight - 1. Romans > Page 3 · Location 210" )); // Jones "Power and Thrones"
-        assertEquals( Location.fromStr( Note, "IX. Romans", "3", 210 ),
+        assertEquals( Location.fromStr( Note, "IX. Romans", "3", "210" ),
                 Location.fromKindle( "Note - IX. Romans > Page 3 · Location 210" )); // Jones "Power and Thrones"
+
+        // From ND Publishing-The Warring States Period 475-221BCE
+        assertEquals( Location.fromStr( Highlight, "", "7", "" ),
+                Location.fromKindle( "Page 7" ));
     }
 
         @Test
@@ -104,12 +133,17 @@ public class LocationTest {
         assertEquals( 0, Location.compare( null, null ));
         assertEquals( -1, Location.compare( null, Location.fromInt( Note, 1,1, 2 )));
         assertEquals( 1, Location.compare( Location.fromInt( Note, 1,1, 2 ), null));
-        Location test = Location.fromStr( Highlight, "X", "20", 30);
+        Location test = Location.fromStr( Highlight, "X", "20", "30");
         assertEquals( 0, test.compareTo( test ));
-        assertEquals( 0, test.compareTo( Location.fromStr( Highlight, "X", "20", 30) ));
-        assertEquals( -1, test.compareTo( Location.fromStr( Note, "X", "20", 30) ));
-        assertEquals( 1, test.compareTo( Location.fromStr( Highlight, "IX", "20", 30) ));
-        assertEquals( -1, test.compareTo( Location.fromStr( Highlight, "X", "21", 30) ));
+        assertEquals( 0, test.compareTo( Location.fromStr( Highlight, "X", "20", "30") ));
+        assertEquals( -1, test.compareTo( Location.fromStr( Note, "X", "20", "30") ));
+        assertEquals( 1, test.compareTo( Location.fromStr( Highlight, "IX", "20", "30") ));
+        assertEquals( -1, test.compareTo( Location.fromStr( Highlight, "X", "21", "30") ));
         assertEquals( 1, test.compareTo( Location.fromInt( Highlight, 10, 20, 29) ));
+
+       assertTrue (Location.fromStr(Highlight, "", "Page 21", "").compareTo(
+               Location.fromStr(Highlight, "", "Page 20", "")) > 0);
+            assertTrue (Location.fromStr(Highlight, "", "  Page 2  ", "").compareTo(
+                    Location.fromStr(Highlight, "", "  Page 20  ", "")) < 0);
     }
 }

@@ -8,7 +8,7 @@ import java.util.stream.Collectors;
  * Location describes the type and chapter/page/location of the document.
  * The location elements are described in the parameter list below.
  * <p>
- * Several parameters are saved as Strings and ints. This is to
+ * Parameters are saved as Strings and ints. This is to
  * preserve the original style of the text (for example Roman numerals), but
  * allow quick integer comparison and equality testing.
  *
@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
  * @param pageStr -  page String (number or Roman numeral)
  * @param location - int location
  */
-public record Location(NoteType type, String chapterStr, int chapter, String pageStr, int page, int location) implements Comparable<Location> {
+public record Location(NoteType type, String chapterStr, int chapter, String pageStr, int page, String locStr, int location) implements Comparable<Location> {
     public enum NoteType {Highlight, Note}
 
     public Location {
@@ -31,56 +31,55 @@ public record Location(NoteType type, String chapterStr, int chapter, String pag
             throw new IllegalArgumentException("pageStr must not be null");
         if (0 > page)
             throw new IllegalArgumentException("page must be non-negative, value=" + page );
+        if (null == locStr)
+            throw new IllegalArgumentException("locStr must not be null");
         if (0 > location)
             throw new IllegalArgumentException("location must be non-negative, value=" + location);
     }
 
-    public static Location fromStr( NoteType noteType, String chapterStr, String pageStr, int loc ) {
+    public static Location fromStr( NoteType noteType, String chapterStr, String pageStr, String locStr ) {
         int chapter = chapterStr.isEmpty() ? 0 : fromIntOrRoman( chapterStr ); // -1 will be no digits
-        chapter = -1 == chapter ? 0 : chapter; // Location does not like negatives
-        int pageInt =  fromIntOrRoman( pageStr );
-        pageInt = -1 == pageInt ? 0 : pageInt; // Location does not like negatives
-        return new Location( noteType, chapterStr, chapter, pageStr, pageInt, loc );
+        chapter = -1 == chapter ? 0 : chapter; // chapter does not like negatives
+        int pageInt = pageStr.isEmpty() ? 0 : fromIntOrRoman( pageStr );
+        // pageInt = -1 == pageInt ? 0 : pageInt; // page does not like negatives
+        int locInt = locStr.isEmpty() ? 0 : fromIntOrRoman( locStr );
+        return new Location( noteType, chapterStr, chapter, pageStr, pageInt, locStr, locInt );
     }
 
     public static Location fromInt( NoteType noteType, int chapter, int page, int loc ) {
         return new Location( noteType,
-            Integer.toString( chapter ), chapter, Integer.toString( page ), page, loc);
+            Integer.toString( chapter ), chapter, Integer.toString( page ), page, Integer.toString( loc ), loc);
     }
 
     public static int fromIntOrRoman(String str) {
         int cVal = -1;
         if (null == str || str.isEmpty()) return cVal;
         try {
-            cVal = intGroup(str);
-            if ( -1 == cVal )
-                cVal = romanGroup( str );
+            cVal = parseIntGroup(str);
+            // cVal = Integer.parseInt( str );
         } catch (NumberFormatException e) {
             cVal = romanGroup( str );
         }
         return cVal;
     }
 
-    // public static String INT_RE = "[^-\\d]*(-?\\d+)\\D*";
-    public static String INT_RE = "\\D*(-?\\d+)\\D*";
+    public static String INT_RE = "\\s*([-+]?\\d+)\\s*";
     public final static Pattern intPattern = Pattern.compile( INT_RE );
-    public static int intGroup( String str ) throws NumberFormatException {
-        int val = -1;
+    /** Unlike Integer.parseInt(), this can fish out a number from
+     *  a String such as "  4. Arabs" or "  Chapter 12 " or " -10 ".
+     * @param str a String with an integer in there.
+     * @return value of embedded integer
+     */
+    public static int parseIntGroup( String str ) throws NumberFormatException {
         Matcher matcher = intPattern.matcher(str);
         if ( matcher.find() ) {
-            String group1 = matcher.group(1);
-            val = Integer.parseInt(group1);
+            String group = matcher.group(1);
+            return Integer.parseInt(group);
         }
-        return val;
+        throw new NumberFormatException( "No integer found in " + str );
     }
-    public static boolean intMatch( String str ) {
-        Matcher matcher = intPattern.matcher(str);
-        return matcher.find();
-    }
-
 
     public static String ROMAN_RE = "((?=[MDCLXVI])M*(C[MD]|D?C{0,3})(X[CL]|L?X{0,3})(I[XV]|V?I{0,3}))";
-    // public static String ROMAN_RE = ".*([IVXLCDM]+).*";
     public final static Pattern romanPattern = Pattern.compile(ROMAN_RE, Pattern.CASE_INSENSITIVE);
     public static int romanGroup(String romanStr) {
         int val = -1;
@@ -150,6 +149,9 @@ public record Location(NoteType type, String chapterStr, int chapter, String pag
      * "Note - I > Page 11 · Location 116"
      * "Highlight (<span class="highlight_yellow">yellow</span>) - I &gt; Page 13 · Location 144"
      * Beware chapter string with dashes - "Highlight (yellow) - The Days of Empire, 1870–1918 > Page 2 · Location 238"
+     * <p>
+     * Also some books have only one of the three parameters,
+     * <h3 class="noteHeading">Highlight (<span class="highlight_yellow">yellow</span>) - Page 7</h3>
      *
      * @param s input string as defined in comments above
      * @return a new Location from the Kindle noteHeading text
@@ -176,6 +178,8 @@ public record Location(NoteType type, String chapterStr, int chapter, String pag
             int dotPos = s.indexOf("·");
             if (-1 != dotPos) {
                 pageStr = s.substring(pagePos + 4, dotPos).trim();
+            } else {
+                pageStr = s.substring(pagePos + 4 ).trim();
             }
         }
 
@@ -184,7 +188,7 @@ public record Location(NoteType type, String chapterStr, int chapter, String pag
         if (-1 != locPos) {
             locStr = s.substring(locPos + 8).trim();
         }
-        return Location.fromStr( noteType, chapterStr, pageStr, Integer.parseInt(locStr));
+        return Location.fromStr( noteType, chapterStr, pageStr, locStr);
     }
 
     @Override
